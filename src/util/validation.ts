@@ -1,0 +1,31 @@
+import fs from 'fs';
+import validFilename from 'valid-filename';
+
+import { Options } from '../downloadFile';
+
+export function validateInputs(options: Options): string {
+    if (!isURL(options.url)) return 'Invalid URL';
+    if (options.threads < 0 || options.threads > 16) return 'Invalid number of threads';
+    if (!isDir(options.dir)) return 'Invalid directory path';
+    if (!validFilename(options.fileName)) return 'Invalid file name';
+
+    return 'OK';
+}
+
+function isDir(directory: string): boolean {
+    try {
+        const stat: fs.Stats = fs.lstatSync(directory);
+        return stat.isDirectory();
+    } catch (err) {
+        return false;
+    }
+}
+
+function isURL(location: string) {
+    try {
+        const url = new URL(location);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (_) {
+        return false;
+    }
+}

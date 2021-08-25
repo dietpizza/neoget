@@ -8,9 +8,8 @@
         "outDir": "dist",
         "preserveConstEnums": true,
         "rootDir": "src",
-        // "strict": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true
     },
-    "exclude": [".vscode", "node_modules", "dist"]
+    "exclude": ["node_modules", "dist"]
 }
