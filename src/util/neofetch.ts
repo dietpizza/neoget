@@ -1,9 +1,9 @@
 import fetch, { Response } from 'node-fetch';
 
-export interface Neofetch {
+export type Neofetch = {
     abort(): void;
     ready: Promise<Response>;
-}
+};
 
 export function neofetch(url: string, options: object): Neofetch {
     const controller: AbortController = new AbortController();

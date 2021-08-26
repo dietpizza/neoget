@@ -1,18 +1,17 @@
 import fetch, { Response } from 'node-fetch';
 import { Neofetch, neofetch } from './util/neofetch';
 
-export interface RequestMetadata {
+export type Metadata = {
     readonly acceptRanges: boolean;
     readonly contentLength: number;
-}
+};
 
 const errorArray: Array<string> = ['ECONNRESET', 'ENOTFOUND'];
 const TIMEOUT: number = 5000;
 
-export async function getMetadata(url: string, headers?: object): Promise<RequestMetadata> {
-    let res: Response;
+export async function doodlQuery(url: string, headers?: object): Promise<Metadata> {
     try {
-        res = await fetch(url, { method: 'HEAD', headers: { ...headers }, timeout: TIMEOUT });
+        const res = await fetch(url, { method: 'HEAD', headers: { ...headers }, timeout: TIMEOUT });
         return {
             acceptRanges: res.headers.get('accept-ranges') === 'bytes',
             contentLength: parseInt(res.headers.get('content-length')),
@@ -29,8 +28,8 @@ export async function getMetadata(url: string, headers?: object): Promise<Reques
     }
 }
 
-async function fakeHead(url: string, headers?: object): Promise<RequestMetadata> {
-    let metadata: RequestMetadata;
+async function fakeHead(url: string, headers?: object): Promise<Metadata> {
+    let metadata: Metadata;
     const request: Neofetch = neofetch(url, {
         headers: { ...headers, Range: 'bytes=0-99' },
         timeout: TIMEOUT,

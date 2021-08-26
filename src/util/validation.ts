@@ -1,7 +1,7 @@
 import fs from 'fs';
 import validFilename from 'valid-filename';
 
-import { Options } from '../downloadFile';
+import { Options } from '../doodlMain';
 
 export function validateInputs(options: Options): string {
     if (!isURL(options.url)) return 'Invalid URL';

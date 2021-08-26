@@ -1,4 +1,4 @@
-import { PartRange } from '../downloadPart';
+import { PartRange } from '../doodlPart';
 
 export function getPartRanges(fileSize: number, threads: number): PartRange[] {
     const partSizes: number[] = getPartSizes(fileSize, threads);
@@ -20,8 +20,8 @@ export function getPartRanges(fileSize: number, threads: number): PartRange[] {
 function getPartSizes(fileSize: number, threads: number): number[] {
     const size: number = Math.floor(fileSize / threads);
     const rem: number = fileSize % threads;
-
     const partSizes: number[] = new Array(threads).fill(size);
+
     partSizes[partSizes.length - 1] += rem;
 
     return partSizes;

@@ -1,8 +1,9 @@
 {
     "name": "doodl",
     "version": "0.1.0",
-    "description": "Fast functional multipart downloader written the 'Node.js Way'.",
-    "main": "index.js",
+    "description": "Fast functional multipart file downloader written the 'Node.js Way'.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "scripts": {
         "build": "rm -rfv ./dist && tsc",
         "watch": "tsc --watch"
@@ -12,14 +13,13 @@
         "multipart",
         "download",
         "fast",
-        "functional",
-        "node.js"
+        "functional"
     ],
     "author": "Rohan Biswas",
     "license": "MIT",
     "devDependencies": {
+        "@types/node": "^16.7.2",
         "@types/node-fetch": "^2.5.12",
-        "tspath": "^1.3.7",
         "typescript": "^4.3.5"
     },
     "dependencies": {
