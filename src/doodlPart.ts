@@ -36,9 +36,8 @@ let _fileSize: number = 0;
 
 let _writeStream: fs.WriteStream;
 let _options: PartOptions;
-let _requestStream: Neofetch;
+let _request: Neofetch;
 
-const _successCodes: number[] = [200, 206];
 const _emitter: Emitter<PartEvents> = mitt<PartEvents>();
 
 export function doodlPart(options: PartOptions): DoodlPart {
@@ -59,33 +58,40 @@ function start(): void {
         _writeStream = fs.createWriteStream(_options.path, {
             flags: 'a+',
         });
-        _requestStream = neofetch(_options.url, {
+        _writeStream.on('error', onError);
+
+        _request = neofetch(_options.url, {
             headers: {
                 ..._options.headers,
                 Range,
             },
         });
-        _requestStream.ready.then(onResponse).catch(onError);
-        _writeStream.on('error', onError);
+        _request.ready.then(onResponse).catch(onError);
     } else {
         setImmediate(() => _emitter.emit('done'));
     }
 }
 
 function stop(): void {
-    _requestStream.abort();
+    _request.abort();
 }
 
 function onResponse(res: Response): void {
     res.body.on('error', onError);
     res.body.on('end', onStreamEnd);
-
-    if (_successCodes.includes(res.status)) {
+    if (res.ok) {
         res.body.on('data', onStreamData);
-        res.body.pipe(_writeStream);
+        res.body.pipe(_writeStream, { end: true });
     }
 
-    if (res.status > 500) setImmediate(() => _emitter.emit('retry'));
+    switch (res.status) {
+        case 503:
+            setImmediate(() => _emitter.emit('retry'));
+            break;
+        case 511:
+            setImmediate(() => _emitter.emit('error', 'AuthError'));
+            break;
+    }
 }
 
 function onStreamEnd(): void {

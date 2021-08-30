@@ -3,13 +3,14 @@ import validFilename from 'valid-filename';
 
 import { Options } from '../doodlMain';
 
-export function validateInputs(options: Options): string {
-    if (!isURL(options.url)) return 'Invalid URL';
-    if (options.threads < 0 || options.threads > 16) return 'Invalid number of threads';
-    if (!isDir(options.dir)) return 'Invalid directory path';
-    if (!validFilename(options.fileName)) return 'Invalid file name';
+export function validateInputs(options: Options): void {
+    const { threads, throttleRate } = options;
 
-    return 'OK';
+    if (!isURL(options.url)) throw 'Invalid URL';
+    if (threads <= 0 || threads > 16) throw 'Invalid number of threads';
+    if (throttleRate < 100 || throttleRate > 2000) throw 'Invalid throttle tate';
+    if (!isDir(options.dir)) throw 'Invalid directory path';
+    if (!validFilename(options.fileName)) throw 'Invalid file name';
 }
 
 function isDir(directory: string): boolean {
