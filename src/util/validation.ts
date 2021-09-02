@@ -1,16 +1,26 @@
 import fs from 'fs';
-import validFilename from 'valid-filename';
+// import  from 'valid-filename';
 
 import { Options } from '../doodlMain';
 
-export function validateInputs(options: Options): void {
-    const { threads, throttleRate } = options;
+export type Validation = {
+    ok: boolean;
+    err: string;
+};
 
-    if (!isURL(options.url)) throw 'Invalid URL';
-    if (threads <= 0 || threads > 16) throw 'Invalid number of threads';
-    if (throttleRate < 100 || throttleRate > 2000) throw 'Invalid throttle tate';
-    if (!isDir(options.dir)) throw 'Invalid directory path';
-    if (!validFilename(options.fileName)) throw 'Invalid file name';
+export function validate(options: Options): Validation {
+    const { threads, throttleRate } = options;
+    let ret: Validation = {
+        ok: false,
+        err: null,
+    };
+    if (!isURL(options.url)) ret.err = 'Invalid URL';
+    if (threads <= 0 || threads > 16) ret.err = 'Invalid number of threads';
+    if (throttleRate < 100 || throttleRate > 2000) ret.err = 'Invalid throttle tate';
+    if (!isDir(options.dir)) ret.err = 'Invalid directory path';
+    // if (!validFilename(options.fileName)) throw 'Invalid file name';
+    ret.ok = true;
+    return ret;
 }
 
 function isDir(directory: string): boolean {
