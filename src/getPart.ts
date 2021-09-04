@@ -16,7 +16,7 @@ export type PartOptions = {
     headers?: object;
 };
 
-export type DoodlPart = {
+export type GetPart = {
     on(event: keyof Events, listener: Handler<any>): void;
     off(event: keyof Events, listener: Handler<any>): void;
     start(): void;
@@ -24,7 +24,7 @@ export type DoodlPart = {
     remove(): void;
 };
 
-export type Part = {
+export type PartEntry = {
     range: PartRange;
     path: string;
 };
@@ -37,7 +37,7 @@ type Events = {
     error: string;
 };
 
-export function doodlPart(options: PartOptions): DoodlPart {
+export function getPart(options: PartOptions): GetPart {
     let _downloadedBytes: number = 0;
     let _fileSize: number = 0;
 
@@ -53,6 +53,7 @@ export function doodlPart(options: PartOptions): DoodlPart {
         const Range: string = getRange();
 
         if (Range !== null) {
+            _downloadedBytes = 0;
             _writeStream = fs.createWriteStream(_options.path, {
                 flags: 'a+',
             });
@@ -104,6 +105,7 @@ export function doodlPart(options: PartOptions): DoodlPart {
         const size = _fileSize + _downloadedBytes;
 
         if (totalSize === size) setImmediate(() => _emitter.emit('done', size));
+        _writeStream.close();
     }
 
     function onStreamData(data: Buffer): void {

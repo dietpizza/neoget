@@ -3,8 +3,8 @@ import path from 'path';
 import mitt, { Emitter, Handler } from 'mitt';
 import throttle from 'throttleit';
 
-import { doodlPart, DoodlPart, PartOptions, PartRange, Part } from './doodlPart';
-import { doodlQuery, Metadata } from './doodlQuery';
+import { getPart, GetPart, PartOptions, PartRange, PartEntry } from './getPart';
+import { getMeta, Metadata } from './getMeta';
 import { validate, Validation } from './util/validation';
 import { getPartRanges } from './util/partRanges';
 import { getAvgSpeed } from './util/averageSpeed';
@@ -29,7 +29,7 @@ export type Info = {
     speed: number;
     threads: number;
     partsizes: Array<number>;
-    parts: Array<Part>;
+    parts: Array<PartEntry>;
 };
 
 export type Data = {
@@ -40,6 +40,8 @@ export type Data = {
 
 export type Doodl = {
     start(): void;
+    pause(): void;
+    remove(): void;
     on(event: keyof Events, listener: Handler<any>): void;
     off(event: keyof Events, listener: Handler<any>): void;
 };
@@ -52,27 +54,29 @@ type Events = {
 };
 
 export async function doodl(options: Options): Promise<Doodl> {
-    let _meta: Metadata;
-    let _info: Info;
-    let _status: Status;
-    let _parts: Array<DoodlPart> = [];
-
-    let _filepath: string;
-    let _metafile: string;
-    let _doneCount: number = 0;
-    let _removedCount: number = 0;
-    let _retryQueue: Array<number> = [];
-
     const SINGLE_CONNECTION: number = 1;
     const THROTTLE_RATE: number = 100;
 
-    const update_t: Function = throttle(update, THROTTLE_RATE);
+    let _filepath: string;
+    let _metafile: string;
+
+    let _doneArray: Array<number> = [];
+    let _removedArray: Array<number> = [];
+    let _errorArray: Array<number> = [];
+    let _retryQueue: Array<number> = [];
+
+    const updateT: Function = throttle(update, THROTTLE_RATE);
     const isValid: Validation = validate(options);
     const _emitter: Emitter<Events> = mitt<Events>();
 
+    let _meta: Metadata;
+    let _info: Info;
+    let _status: Status;
+    let _parts: Array<GetPart> = [];
+
     if (isValid.ok) {
         _filepath = path.join(options.dir, options.filename);
-        _meta = await doodlQuery(options.url);
+        _meta = await getMeta(options.url);
         _metafile = _filepath + '.json';
 
         if (!_meta.acceptRanges) options.threads = SINGLE_CONNECTION;
@@ -81,6 +85,7 @@ export async function doodl(options: Options): Promise<Doodl> {
             options = JSON.parse(await fs.readFile(_metafile, { encoding: 'utf8' }));
         } catch (_) {
             options.throttleRate ??= THROTTLE_RATE;
+            await fs.writeFile(_metafile, JSON.stringify(options), { encoding: 'utf8' });
         }
 
         setDefaults();
@@ -88,10 +93,29 @@ export async function doodl(options: Options): Promise<Doodl> {
         setImmediate(() => _emitter.emit('error', `OptionsError: ${isValid.err}`));
     }
 
+    function mapParts(val: PartEntry, index: number) {
+        const partOptions: PartOptions = {
+            url: options.url,
+            path: val.path,
+            range: val.range,
+            headers: options.headers,
+        };
+        const part = getPart(partOptions);
+
+        part.on('data', onData(index));
+        part.on('done', onDone(index));
+        part.on('retry', onRetry(index));
+        part.on('error', onError(index));
+        part.on('removed', onRemoved(index));
+        part.start();
+
+        return part;
+    }
+
     function start(): void {
-        _doneCount = 0;
-        setStatus('ACTIVE');
         if (_parts.length === 0) {
+            _doneArray = [];
+            setStatus('ACTIVE');
             _parts = _info.parts.map(mapParts);
         } else {
             _parts.forEach((part) => part.start());
@@ -99,49 +123,66 @@ export async function doodl(options: Options): Promise<Doodl> {
     }
 
     function pause(): void {
-        _parts.forEach((part: DoodlPart) => part.stop());
+        _parts.forEach((part: GetPart) => part.stop());
         setStatus('PAUSED');
     }
 
     function remove(): void {
-        _removedCount = 0;
-        _parts.forEach((part: DoodlPart) => part.remove());
+        _removedArray = [];
+        _parts.forEach((part: GetPart) => part.remove());
     }
 
     function onData(index: number) {
-        return function (size: number) {
+        return (size: number) => {
             _info.partsizes[index] = size;
-            update_t();
+            updateT();
         };
     }
 
     function onDone(index: number) {
-        return async function curry(size: number) {
+        return async (size: number) => {
             _info.partsizes[index] = size;
+
+            if (!_doneArray.includes(index)) _doneArray.push(index);
             if (_retryQueue.length > 0) _parts[_retryQueue.shift()].start();
-            if (++_doneCount === options.threads) {
-                const files: Array<string> = _info.parts.map((part: Part) => part.path);
+            if (_doneArray.length === options.threads) {
+                const files: Array<string> = _info.parts.map((part: PartEntry) => part.path);
                 setStatus('BUILDING');
                 if (await mergeFiles(files, _filepath)) {
-                    setStatus('DONE');
+                    files.push(_metafile);
                     await deleteFiles(files);
+                    setStatus('DONE');
                 } else {
                     setStatus('ERROR');
+                    _emitter.emit('error', 'MergeError');
                 }
             }
         };
     }
 
     function onRetry(index: number) {
-        return function curry() {
+        return () => {
             if (!_retryQueue.includes(index)) _retryQueue.push(index);
         };
     }
 
-    function onRemoved() {
-        if (++_removedCount === options.threads) {
-            setStatus('REMOVED');
-        }
+    function onError(index: number) {
+        return () => {
+            if (!_errorArray.includes(index)) _errorArray.push(index);
+            if (_errorArray.length === options.threads) {
+                _emitter.emit('error');
+                setStatus('ERROR');
+            }
+        };
+    }
+
+    function onRemoved(index: number) {
+        return () => {
+            if (!_removedArray.includes(index)) _removedArray.push(index);
+            if (_removedArray.length === options.threads) {
+                setStatus('REMOVED');
+            }
+        };
     }
 
     function setDefaults() {
@@ -176,25 +217,6 @@ export async function doodl(options: Options): Promise<Doodl> {
         );
     }
 
-    function mapParts(val: Part, index: number) {
-        const partOptions: PartOptions = {
-            url: options.url,
-            path: val.path,
-            range: val.range,
-            headers: options.headers,
-        };
-
-        const part = doodlPart(partOptions);
-
-        part.on('data', onData(index));
-        part.on('done', onDone(index));
-        part.on('retry', onRetry(index));
-
-        part.start();
-
-        return part;
-    }
-
     function update(): void {
         _info.downloaded = _info.partsizes.reduce((sum: number, current: number) => sum + current);
         _info.speed = getAvgSpeed(_info.downloaded);
@@ -216,6 +238,8 @@ export async function doodl(options: Options): Promise<Doodl> {
 
     return {
         start,
+        pause,
+        remove,
         on,
         off,
     };

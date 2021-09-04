@@ -1,4 +1,4 @@
-import { PartRange } from '../doodlPart';
+import { PartRange } from '../getPart';
 
 export function getPartRanges(fileSize: number, threads: number): Array<PartRange> {
     const partSizes: Array<number> = getPartSizes(fileSize, threads);

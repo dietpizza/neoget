@@ -9,7 +9,7 @@ export type Metadata = {
 const errorArray: Array<string> = ['ECONNRESET', 'ENOTFOUND'];
 const TIMEOUT: number = 5000;
 
-export async function doodlQuery(url: string, headers?: object): Promise<Metadata> {
+export async function getMeta(url: string, headers?: object): Promise<Metadata> {
     try {
         const res = await fetch(url, { method: 'HEAD', headers: { ...headers }, timeout: TIMEOUT });
         return {

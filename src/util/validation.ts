@@ -1,7 +1,6 @@
 import fs from 'fs';
-// import  from 'valid-filename';
 
-import { Options } from '../doodlMain';
+import { Options } from '../neoget';
 
 export type Validation = {
     ok: boolean;
@@ -14,11 +13,12 @@ export function validate(options: Options): Validation {
         ok: false,
         err: null,
     };
+
     if (!isURL(options.url)) ret.err = 'Invalid URL';
     if (threads <= 0 || threads > 16) ret.err = 'Invalid number of threads';
     if (throttleRate < 100 || throttleRate > 2000) ret.err = 'Invalid throttle tate';
     if (!isDir(options.dir)) ret.err = 'Invalid directory path';
-    // if (!validFilename(options.fileName)) throw 'Invalid file name';
+
     ret.ok = true;
     return ret;
 }
