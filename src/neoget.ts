@@ -4,7 +4,7 @@ import mitt, { Emitter, Handler } from 'mitt';
 import throttle from 'throttleit';
 
 import { getPart, GetPart, PartOptions, PartRange, PartEntry } from './getPart';
-import { getMeta, Metadata } from './getMeta';
+import { getMeta, Metadata, getFilename } from './getMeta';
 import { validate, Validation } from './util/validation';
 import { getPartRanges } from './util/partRanges';
 import { getAvgSpeed } from './util/averageSpeed';
@@ -57,6 +57,10 @@ export async function doodl(options: Options): Promise<Doodl> {
     const SINGLE_CONNECTION: number = 1;
     const THROTTLE_RATE: number = 100;
 
+    options.throttleRate ??= THROTTLE_RATE;
+    options.threads ??= 1;
+    options.filename ??= getFilename(options.url);
+
     let _filepath: string;
     let _metafile: string;
 
@@ -75,8 +79,8 @@ export async function doodl(options: Options): Promise<Doodl> {
     let _parts: Array<GetPart> = [];
 
     if (isValid.ok) {
-        _filepath = path.join(options.dir, options.filename);
         _meta = await getMeta(options.url);
+        _filepath = path.join(options.dir, options.filename);
         _metafile = _filepath + '.json';
 
         if (!_meta.acceptRanges) options.threads = SINGLE_CONNECTION;
@@ -84,13 +88,12 @@ export async function doodl(options: Options): Promise<Doodl> {
         try {
             options = JSON.parse(await fs.readFile(_metafile, { encoding: 'utf8' }));
         } catch (_) {
-            options.throttleRate ??= THROTTLE_RATE;
             await fs.writeFile(_metafile, JSON.stringify(options), { encoding: 'utf8' });
         }
 
         setDefaults();
     } else {
-        setImmediate(() => _emitter.emit('error', `OptionsError: ${isValid.err}`));
+        setImmediate(() => _emitter.emit('error', isValid.err));
     }
 
     function mapParts(val: PartEntry, index: number) {
@@ -147,6 +150,7 @@ export async function doodl(options: Options): Promise<Doodl> {
             if (_retryQueue.length > 0) _parts[_retryQueue.shift()].start();
             if (_doneArray.length === options.threads) {
                 const files: Array<string> = _info.parts.map((part: PartEntry) => part.path);
+                _info.speed = 0;
                 setStatus('BUILDING');
                 if (await mergeFiles(files, _filepath)) {
                     files.push(_metafile);
@@ -163,14 +167,17 @@ export async function doodl(options: Options): Promise<Doodl> {
     function onRetry(index: number) {
         return () => {
             if (!_retryQueue.includes(index)) _retryQueue.push(index);
+            if (_retryQueue.length === options.threads) {
+                setImmediate(() => _emitter.emit('error', 'FetchError'));
+            }
         };
     }
 
     function onError(index: number) {
-        return () => {
+        return (name: string) => {
             if (!_errorArray.includes(index)) _errorArray.push(index);
             if (_errorArray.length === options.threads) {
-                _emitter.emit('error');
+                _emitter.emit('error', name);
                 setStatus('ERROR');
             }
         };

@@ -1,28 +1,26 @@
-import express, { Application, Request, Response } from 'express';
-import enableWs, { Instance } from 'express-ws';
-import Websocket from 'ws';
-
-import { encode, decode } from './util/jsonhelper';
+import http from 'http';
+import { Server, Socket } from 'socket.io';
 
 const PORT: number = 3000;
 
-const appBase: Application = express();
-const wsInstance: Instance = enableWs(appBase);
-// const wss: Server = wsInstance.getWss();
+const server = http.createServer();
+const io = new Server(server);
 
-let { app } = wsInstance;
-
-app.use(express.json());
-
-app.ws('/data', (ws: Websocket) => {
-    ws.on('message', () => {});
-    ws.send(
-        encode({
-            connect: 'ok',
-        })
-    );
-});
-
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log('Server is up and running on port', PORT);
 });
+
+io.on('connection', onConnect);
+
+function onConnect(socket: Socket) {
+    socket.emit('data', {
+        well: 'done',
+    });
+
+    socket.on('data', onData);
+    console.log('New Connection!');
+}
+
+function onData(data: object) {
+    console.log(data);
+}
