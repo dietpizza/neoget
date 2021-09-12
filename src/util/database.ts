@@ -1,9 +1,7 @@
 import fs from 'fs/promises';
 
-export type dB = Map<string, object>;
-
-export async function create(path?: string, delay?: number): Promise<dB> {
-    let db: dB = new Map();
+export async function create<Type>(path?: string, delay?: number): Promise<Map<string, Type>> {
+    let db: Map<string, Type> = new Map();
 
     async function cleanup() {
         await writeToDisk();
@@ -25,7 +23,6 @@ export async function create(path?: string, delay?: number): Promise<dB> {
         const data = await fs.readFile(path, { encoding: 'utf8' });
         db = new Map(Object.entries(JSON.parse(data)));
     } catch (err) {
-        const data = JSON.stringify(db);
         await writeToDisk();
     }
 

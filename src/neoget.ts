@@ -38,7 +38,7 @@ export type Data = {
     info: Info;
 };
 
-export type Doodl = {
+export type Neoget = {
     start(): void;
     pause(): void;
     remove(): void;
@@ -53,7 +53,7 @@ type Events = {
     done: void;
 };
 
-export async function doodl(options: Options): Promise<Doodl> {
+export async function neoget(options: Options): Promise<Neoget> {
     const SINGLE_CONNECTION: number = 1;
     const THROTTLE_RATE: number = 100;
 
@@ -118,7 +118,14 @@ export async function doodl(options: Options): Promise<Doodl> {
     function start(): void {
         if (_parts.length === 0) {
             _doneArray = [];
-            setStatus('ACTIVE');
+            _status = 'ACTIVE';
+            setImmediate(() => {
+                _emitter.emit('start', {
+                    status: _status,
+                    options: options,
+                    info: _info,
+                });
+            });
             _parts = _info.parts.map(mapParts);
         } else {
             _parts.forEach((part) => part.start());
@@ -156,9 +163,10 @@ export async function doodl(options: Options): Promise<Doodl> {
                     files.push(_metafile);
                     await deleteFiles(files);
                     setStatus('DONE');
+                    setImmediate(() => _emitter.emit('done'));
                 } else {
                     setStatus('ERROR');
-                    _emitter.emit('error', 'MergeError');
+                    setImmediate(() => _emitter.emit('error', 'MergeError'));
                 }
             }
         };
@@ -168,6 +176,7 @@ export async function doodl(options: Options): Promise<Doodl> {
         return () => {
             if (!_retryQueue.includes(index)) _retryQueue.push(index);
             if (_retryQueue.length === options.threads) {
+                setStatus('ERROR');
                 setImmediate(() => _emitter.emit('error', 'FetchError'));
             }
         };
