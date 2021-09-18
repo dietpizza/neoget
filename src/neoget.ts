@@ -3,14 +3,21 @@ import path from 'path';
 import mitt, { Emitter, Handler } from 'mitt';
 import throttle from 'throttleit';
 
-import { getPart, GetPart, PartOptions, PartRange, PartEntry } from './getPart';
-import { getMeta, Metadata, getFilename } from './getMeta';
+import { getPart, GetPart, PartEntry, PartOptions, PartRange } from './getPart';
+import { getFilename, getMeta, Metadata } from './getMeta';
 import { validate, Validation } from './util/validation';
 import { getPartRanges } from './util/partRanges';
 import { getAvgSpeed } from './util/averageSpeed';
-import { mergeFiles, deleteFiles } from './util/mergeFiles';
+import { deleteFiles, mergeFiles } from './util/mergeFiles';
 
-export type Status = 'REMOVED' | 'PAUSED' | 'WAITING' | 'ACTIVE' | 'BUILDING' | 'DONE' | 'ERROR';
+export type Status =
+    | 'REMOVED'
+    | 'PAUSED'
+    | 'WAITING'
+    | 'ACTIVE'
+    | 'BUILDING'
+    | 'DONE'
+    | 'ERROR';
 
 export type Options = {
     url: string;
@@ -28,7 +35,7 @@ export type Info = {
     progress: number;
     speed: number;
     threads: number;
-    partsizes: Array<number>;
+    partSizes: Array<number>;
     parts: Array<PartEntry>;
 };
 
@@ -86,9 +93,13 @@ export async function neoget(options: Options): Promise<Neoget> {
         if (!_meta.acceptRanges) options.threads = SINGLE_CONNECTION;
 
         try {
-            options = JSON.parse(await fs.readFile(_metafile, { encoding: 'utf8' }));
+            options = JSON.parse(
+                await fs.readFile(_metafile, { encoding: 'utf8' })
+            );
         } catch (_) {
-            await fs.writeFile(_metafile, JSON.stringify(options), { encoding: 'utf8' });
+            await fs.writeFile(_metafile, JSON.stringify(options), {
+                encoding: 'utf8',
+            });
         }
 
         setDefaults();
@@ -144,19 +155,21 @@ export async function neoget(options: Options): Promise<Neoget> {
 
     function onData(index: number) {
         return (size: number) => {
-            _info.partsizes[index] = size;
+            _info.partSizes[index] = size;
             updateT();
         };
     }
 
     function onDone(index: number) {
         return async (size: number) => {
-            _info.partsizes[index] = size;
+            _info.partSizes[index] = size;
 
             if (!_doneArray.includes(index)) _doneArray.push(index);
             if (_retryQueue.length > 0) _parts[_retryQueue.shift()].start();
             if (_doneArray.length === options.threads) {
-                const files: Array<string> = _info.parts.map((part: PartEntry) => part.path);
+                const files: Array<string> = _info.parts.map(
+                    (part: PartEntry) => part.path
+                );
                 _info.speed = 0;
                 setStatus('BUILDING');
                 if (await mergeFiles(files, _filepath)) {
@@ -209,8 +222,10 @@ export async function neoget(options: Options): Promise<Neoget> {
             speed: 0,
             threads: options.threads,
             downloaded: 0,
-            partsizes: Array(options.threads).fill(0),
-            parts: getPartRanges(_meta.contentLength, options.threads).map(mapPartData),
+            partSizes: Array(options.threads).fill(0),
+            parts: getPartRanges(_meta.contentLength, options.threads).map(
+                mapPartData
+            ),
         };
 
         emitData();
@@ -234,7 +249,9 @@ export async function neoget(options: Options): Promise<Neoget> {
     }
 
     function update(): void {
-        _info.downloaded = _info.partsizes.reduce((sum: number, current: number) => sum + current);
+        _info.downloaded = _info.partSizes.reduce(
+            (sum: number, current: number) => sum + current
+        );
         _info.speed = getAvgSpeed(_info.downloaded);
         _info.progress = (_info.downloaded / _info.size) * 100;
         emitData();
@@ -244,6 +261,7 @@ export async function neoget(options: Options): Promise<Neoget> {
         _status = status;
         update();
     }
+
     function on(event: keyof Events, listener: Handler<any>): void {
         _emitter.on(event, listener);
     }
