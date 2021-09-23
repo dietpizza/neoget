@@ -6,14 +6,17 @@ import { Options, Data, Neoget, neoget } from './neoget';
 export type Queue = {
     add(options: Options): void;
     pause(key: string): void;
-    getData(): void;
+    getData(): Array<Data>;
+    startQueue(): void;
+    stopQueue(): void;
 };
 
 export async function queue(): Promise<Queue> {
     const db = await create<Data>('/home/rohan/neoget.db');
     const clients = new Map<string, Neoget>();
+    let isActive: boolean = false;
 
-    async function add(options: Options) {
+    async function add(options: Options): Promise<void> {
         const key = nanoid();
         const client = await neoget(options);
 
@@ -39,14 +42,23 @@ export async function queue(): Promise<Queue> {
         const client = clients.get(key);
         client.pause();
     }
+    function getData(): Array<Data> {
+        return [...db.values()];
+    }
 
-    function getData() {
-        return Object.fromEntries(db);
+    function startQueue(): void {
+        isActive = true;
+    }
+
+    function stopQueue(): void {
+        isActive = false;
     }
 
     return {
         add,
         pause,
         getData,
+        startQueue,
+        stopQueue,
     };
 }

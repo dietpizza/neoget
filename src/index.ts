@@ -1,5 +1,5 @@
-import https from 'https';
-// import http from 'http';
+import * as https from 'https';
+import * as http from 'http';
 import express from 'express';
 import cors from 'cors';
 
@@ -25,14 +25,16 @@ io.on('connection', onConnect);
 
 server.listen(PORT, () => {
     console.log('Neoget is up and running on port', PORT);
-    main();
+    main().catch((err: Error) => {
+        console.log(err.name);
+    });
 });
 
-async function main() {
-    const neoget: Queue = await queue();
+async function main(): Promise<void> {
+    const cute: Queue = await queue();
 
     setInterval(() => {
-        io.emit('data', neoget.getData());
+        io.emit('data', cute.getData());
     }, 1000);
 }
 

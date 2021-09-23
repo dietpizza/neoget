@@ -9,9 +9,16 @@ export type Metadata = {
 const errorArray: Array<string> = ['ECONNRESET', 'ENOTFOUND'];
 const TIMEOUT: number = 5000;
 
-export async function getMeta(url: string, headers?: object): Promise<Metadata> {
+export async function getMeta(
+    url: string,
+    headers?: object
+): Promise<Metadata> {
     try {
-        const res = await fetch(url, { method: 'HEAD', headers: { ...headers }, timeout: TIMEOUT });
+        const res = await fetch(url, {
+            method: 'HEAD',
+            headers: { ...headers },
+            timeout: TIMEOUT,
+        });
         return {
             acceptRanges: res.headers.get('accept-ranges') === 'bytes',
             contentLength: parseInt(res.headers.get('content-length')),
@@ -42,7 +49,9 @@ async function fakeHead(url: string, headers?: object): Promise<Metadata> {
         });
         metadata = {
             acceptRanges: true,
-            contentLength: parseInt(res.headers.get('content-range').split('/').pop()),
+            contentLength: parseInt(
+                res.headers.get('content-range').split('/').pop()
+            ),
         };
     } catch (err: any) {
         if (err.name === 'AbortError') {

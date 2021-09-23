@@ -154,14 +154,14 @@ export async function neoget(options: Options): Promise<Neoget> {
     }
 
     function onData(index: number) {
-        return (size: number) => {
+        return function curry(size: number): void {
             _info.partSizes[index] = size;
             updateT();
         };
     }
 
     function onDone(index: number) {
-        return async (size: number) => {
+        return async function curry(size: number): Promise<void> {
             _info.partSizes[index] = size;
 
             if (!_doneArray.includes(index)) _doneArray.push(index);
@@ -186,7 +186,7 @@ export async function neoget(options: Options): Promise<Neoget> {
     }
 
     function onRetry(index: number) {
-        return () => {
+        return function curry(): void {
             if (!_retryQueue.includes(index)) _retryQueue.push(index);
             if (_retryQueue.length === options.threads) {
                 setStatus('ERROR');
@@ -196,7 +196,7 @@ export async function neoget(options: Options): Promise<Neoget> {
     }
 
     function onError(index: number) {
-        return (name: string) => {
+        return function curry(name: string): void {
             if (!_errorArray.includes(index)) _errorArray.push(index);
             if (_errorArray.length === options.threads) {
                 _emitter.emit('error', name);
@@ -206,7 +206,7 @@ export async function neoget(options: Options): Promise<Neoget> {
     }
 
     function onRemoved(index: number) {
-        return () => {
+        return function curry(): void {
             if (!_removedArray.includes(index)) _removedArray.push(index);
             if (_removedArray.length === options.threads) {
                 setStatus('REMOVED');
@@ -231,14 +231,14 @@ export async function neoget(options: Options): Promise<Neoget> {
         emitData();
     }
 
-    function mapPartData(range: PartRange, index: number) {
+    function mapPartData(range: PartRange, index: number): PartEntry {
         return {
             range,
             path: _filepath + '.' + index,
         };
     }
 
-    function emitData() {
+    function emitData(): void {
         setImmediate(() =>
             _emitter.emit('data', {
                 status: _status,

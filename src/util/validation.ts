@@ -8,7 +8,8 @@ export type Validation = {
 };
 
 export function validate(options: Options): Validation {
-    const { threads, throttleRate } = options;
+    const { threads, throttleRate }: Options = options;
+
     let ret: Validation = {
         ok: false,
         err: null,
@@ -16,7 +17,8 @@ export function validate(options: Options): Validation {
 
     if (!isURL(options.url)) ret.err = 'Invalid URL';
     if (threads <= 0 || threads > 16) ret.err = 'Invalid number of threads';
-    if (throttleRate < 100 || throttleRate > 2000) ret.err = 'Invalid throttle tate';
+    if (throttleRate < 100 || throttleRate > 2000)
+        ret.err = 'Invalid throttle tate';
     if (!isDir(options.dir)) ret.err = 'Invalid directory path';
 
     ret.ok = true;
