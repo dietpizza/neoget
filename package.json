@@ -8,10 +8,6 @@
         "build": "rm -rfv ./dist && tsc",
         "watch": "tsc --watch"
     },
-    "prettier": {
-        "tabWidth": 4,
-        "singleQuote": true
-    },
     "keywords": [
         "neoget",
         "speed",
