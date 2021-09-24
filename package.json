@@ -18,7 +18,7 @@
         "fast",
         "functional"
     ],
-    "author": "Rohan Biswas",
+    "author": "Rohan Biswas <imrohan550@gmail.com>",
     "license": "MIT",
     "devDependencies": {
         "@types/express": "^4.17.13",
